@@ -1,0 +1,38 @@
+{
+    "file_path": "E:\\Datasets\\Entreprise Test\\sales_data_sample.csv",
+
+    "export_path": "E:\\Export PowerBI\\Entreprise Test\\Sales_data_pipeline1.csv",
+
+    "export_format": "csv",
+
+    "encoding": "cp1252",
+
+    "col_assign": {
+        "new_col_name": "Prix Moyen Unitaire",
+        "arg1": "Montant de la vente",
+        "arg2": "Quantité commandée"
+    },
+    
+    "drop_NAN": {"active": true, "subset": null},
+
+    "date_column": null,
+
+    "mapping_month": {
+        "1": "Janvier", "2": "Février", "3": "Mars", "4": "Avril", "5": "Mai", "6": "Juin",
+        "7": "Juillet", "8": "Août", "9": "Septembre", "10": "Octobre", "11": "Novembre", "12": "Décembre"
+    },
+    "column_transform":"Mois",
+
+    "mapping_rename" : {
+        "QUANTITYORDERED": "Quantité commandée",
+        "PRICEEACH": "Prix unitaire",
+        "SALES": "Montant de la vente","MONTH_ID":"Mois", "YEAR_ID":"Année"
+    },
+    "data_types":{"QUANTITYORDERED":"float", "PRICEEACH":"float", "SALES":"float", "YEAR_ID":"str", "COUNTRY":"str", "MONTH_ID":"str", "PRODUCTCODE":"str"},
+
+    "group_by": ["Année","Mois", "COUNTRY", "PRODUCTCODE"],
+
+    "agg_logic": {
+        "Montant de la vente": "sum", "Quantité commandée": "sum", "Prix unitaire": "mean"
+    }
+}
