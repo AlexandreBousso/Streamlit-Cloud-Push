@@ -2,37 +2,81 @@ import streamlit as st
 import pandas as pd
 import json
 import plotly.express as px
+from Pipeline_data2 import run_pipeline
 
-fichier = st.file_uploader("Uploadez votre fichier CSV", type=["csv"])
+fichier = st.file_uploader("Uploader votre fichier CSV", type=["csv"])
+
+#Set up du fichier utilisateur
 
 if fichier is not None:
-    df = pd.read_csv(fichier, encoding="utf-8-sig")   
+    df_brut = pd.read_csv(fichier, encoding="utf-8-sig")
+    
+    with st.expander("Associer vos colonnes", expanded=True):
+        colonnes = df_brut.columns.tolist()
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            col_annee = st.selectbox("Colonne Année", ["--Sélectionner"] + colonnes)
+            col_mois = st.selectbox("Colonne Mois", ["--Sélectionner"] + colonnes)
+            col_ca = st.selectbox("Colonne Chiffre d'affaires", ["--Sélectionner"] + colonnes)
+        with col2:
+            col_qty = st.selectbox("Colonne Quantité", ["--Sélectionner"] + colonnes)
+            col_produit = st.selectbox("Colonne Produit", ["--Sélectionner"] + colonnes)
+            col_pays = st.selectbox("Colonne Pays", ["--Sélectionner"] + colonnes)
+
+    if "--Sélectionner" in [col_annee, col_mois, col_ca, col_qty, col_produit]:
+        st.warning("Merci d'associer toutes les colonnes pour continuer.")
+        st.stop()
+    mapping_rename = {
+        col_annee: "Année",
+        col_mois: "Mois",
+        col_ca: "Montant de la vente",
+        col_qty: "Quantité commandée",
+        col_produit: "PRODUCTCODE",
+    }
+    if col_pays != "--Sélectionner":
+        mapping_rename[col_pays] = "COUNTRY"
+    
+    groupby =["Année","Mois","Mois_num","Période","PRODUCTCODE"]
+    if col_pays != "--Sélectionner":
+        groupby.append("COUNTRY")
+
+    agg_logic = {
+    "Montant de la vente": "sum",
+    "Quantité commandée": "sum"}
+
+    col_assign_conf = {
+    "new_col_name": "Prix Moyen Unitaire",
+    "arg1": "Montant de la vente",
+    "arg2": "Quantité commandée"}
+
+    config = {
+        "mapping_rename": mapping_rename,
+        "group_by": groupby,
+        "agg_logic": agg_logic,
+        "col_assign": col_assign_conf,
+        "data_types": {},
+        "date_column": None,
+        "export_path": "export"
+    }
+    df= run_pipeline(df_brut, config)
+    
 else:
     st.info("Merci d'uploader un fichier CSV pour commencer.")
     st.stop()  
 
-try:
-    df["Année"] = df["Année"].astype(int)
-    df["Mois"] = df["Mois"].astype(int)
-    df["Montant de la vente"] = df["Montant de la vente"].astype(float)
-    df["Quantité commandée"] = df["Quantité commandée"].astype(float)
-except ValueError:
-    st.error("❌ Le fichier ne semble pas avoir le bon format. Vérifiez que le pipeline a bien été exécuté.")
-    st.stop()
+
+
 
 #---------------------- Préparation des données --------------------------------
 #-----------------------------------------------------------------------------------------------
 
-df["Mois"] = df["Mois"].astype(int)
 mois_labels = {
     1: "Janvier", 2: "Février", 3: "Mars",
     4: "Avril", 5: "Mai", 6: "Juin",
     7: "Juillet", 8: "Août", 9: "Septembre",
     10: "Octobre", 11: "Novembre", 12: "Décembre"
 }
-df["Mois_num"] = df["Mois"].astype(int)
-df["Mois"] = df["Mois"].map(mois_labels)
-df["Période"] = df["Année"].astype(str) + df["Mois_num"].astype(str).str.zfill(2)
 mois = list(mois_labels.values())
 périodes = sorted(df["Période"].unique())
 
@@ -48,13 +92,18 @@ with st.sidebar:
     #Slicer Année
     années = sorted(df["Année"].unique().tolist())
     année_selectionnée = st.selectbox("Sélectionne une année", années)
+    mois_disponibles = df[df["Année"]== année_selectionnée]["Mois"].unique()
+    mois_disponibles = [m for m in mois_labels.values() if m in mois_disponibles]
     #Slicer Mois
     mois = list(mois_labels.values())
-    mois_sélectionné = st.selectbox("Sélectionne un mois", mois)
+    mois_sélectionné = st.selectbox("Mois", mois_disponibles)
 
-    st.subheader("Vue par pays")
-    pays = ["Tous les pays"] + sorted(df["COUNTRY"].unique().tolist())
-    pays_sélectionné = st.selectbox("Pays", pays)
+    if col_pays != "--Sélectionner":
+        st.subheader("Vue par pays")
+        pays = ["Tous les pays"] + sorted(df["COUNTRY"].unique().tolist())
+        pays_sélectionné = st.selectbox("Pays", pays)
+    else:
+        pays_sélectionné ="Tous les pays"
     #SLICER année/pays
     années_pays = ["Toutes les années"] + sorted(df["Année"].unique().tolist())
     année_pays = st.selectbox("Année", années_pays)
@@ -68,7 +117,8 @@ with st.sidebar:
 
 
 #DF Filtré Pays
-df_filtré_pays = df[df["COUNTRY"] == pays_sélectionné]
+if col_pays !="--Sélectionner":
+    df_filtré_pays = df[df["COUNTRY"] == pays_sélectionné]
 #DF Filtré Année
 df_filtré = df[df["Année"] == année_selectionnée]
 #DF Filtré Mois
@@ -158,29 +208,39 @@ st.plotly_chart(fig_mois)
 #Graphique de répartition par produit
 st.subheader("Répartition du CA par produit")
 
+top_x = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=10)
+
 ca_par_produit = df_filtré.groupby("PRODUCTCODE")["Montant de la vente"].sum().sort_values(ascending=False).reset_index()
+top_produits = ca_par_produit.head(top_x)
 
 fig = px.bar(
-    ca_par_produit,
+    top_produits,
     x="PRODUCTCODE",
     y="Montant de la vente",
     labels={
         "PRODUCTCODE": "Produit",
         "Montant de la vente": "Chiffre d'affaires (€)"
     },
-    title="Répartition du CA par produit"
+    title=f"Top {top_x} produits par CA"
 )
 
 
 st.plotly_chart(fig)
+with st.expander("Voir tous les produits"):
+    st.dataframe(ca_par_produit)
+
 
 #Meilleurs produits par mois
 st.subheader("Meilleurs ventes de produits par mois")
 
+top_x2 = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=11)
+
 
 best_seller_month = df_filtré_mois.groupby("PRODUCTCODE")["Quantité commandée"].sum().sort_values(ascending=False).reset_index()
+top_produits_mois = best_seller_month.head(top_x2)
+
 fig_mois=px.bar(
-    best_seller_month,
+    top_produits_mois,
     x="PRODUCTCODE",
     y="Quantité commandée",
     labels={
@@ -191,3 +251,6 @@ fig_mois=px.bar(
 )
 
 st.plotly_chart(fig_mois)
+
+with st.expander("Voir tous les produits"):
+    st.dataframe(best_seller_month)
