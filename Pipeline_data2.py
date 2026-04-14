@@ -251,34 +251,71 @@ def saving_file(df, path, format): #Fonction qui permet de save un data frame au
         logging.info("Format de fichier incompatible, veuillez choisir entre 'csv' ou 'excel'")
     return df
 
+def prepare_dates(df, date_column=None):
+    if date_column is not None:
+        df["Date"] = pd.to_datetime(df[date_column])
+        df["Année"] = df["Date"].dt.year
+        df["Mois"] = df["Date"].dt.month
+        df["Jour"] = df["Date"].dt.day
+    logging.info(f"Colonnes disponibles dans prepare_dates : {df.columns.tolist()}")
+    logging.info(f"Type de Mois : {df['Mois'].dtype}")
+    mois_labels = {
+        1: "Janvier", 2: "Février", 3: "Mars",
+        4: "Avril", 5: "Mai", 6: "Juin",
+        7: "Juillet", 8: "Août", 9: "Septembre",
+        10: "Octobre", 11: "Novembre", 12: "Décembre"
+    }
+    df["Mois_num"] = df["Mois"].astype(int)
+    df["Mois"] = df["Mois"].map(mois_labels)
+    df["Période"] = df["Année"].astype(str) + df["Mois_num"].astype(str).str.zfill(2)
+    logging.info("Colonnes Mois_num et Période créées.")
+    return df
+# ==========================================
+# 4. Execution du pipeline
+# ==========================================
 
-# ==========================================
-# 4. LE COEUR DU PIPELINE (L'Exécution)
-# ==========================================
+mois_labels = {
+    1: "Janvier", 2: "Février", 3: "Mars",
+    4: "Avril", 5: "Mai", 6: "Juin",
+    7: "Juillet", 8: "Août", 9: "Septembre",
+    10: "Octobre", 11: "Novembre", 12: "Décembre"
+}
+
+
+def run_pipeline(df, config):
+    agg_logic = config.get("agg_logic", {})
+    col_assign_conf = config.get("col_assign", {})
+    conf_encoding= config.get("encoding", "utf-8")
+    date_column = config.get("date_column", None)
+    data_types = config.get("data_types", {})
+    grpby = config.get("group_by", [])
+    mapping_rename_col = config.get("mapping_rename", {})
+    date_column = config.get("date_column", None)
+
+
+    df_resultat= (df.pipe(extract_date, date_column=date_column)
+    .pipe(df_info).pipe(check_missing)
+    .pipe(convert_dtypes, dtype_map=data_types)
+    .pipe(column_rename, mapping=mapping_rename_col, keep_others=True)
+    .pipe(prepare_dates, date_column=date_column)
+    .pipe(df_drop_NAN)
+    .pipe(aggregate, grpby_columns=grpby, agg_logic=agg_logic)
+    .pipe(col_assign, **col_assign_conf)
+    .pipe(df_info)
+) 
+    return df_resultat
 
 def run_full_test():
     config = load_config("config.json")
     if not config:
+        logging.info("Aucune configuration trouvée, arrêt du pipeline.")
         return
-    conf_encoding= config.get("encoding", "utf-8") #on récupère l'encodage dans la config, si il n'est pas spécifié on utilise utf-8 par défaut
-    mapping_rename_col = config["mapping_rename"]
-    data_types=config["data_types"]
-    agg_logic = config["agg_logic"]
-    grpby= config["group_by"]
-    file_path = config["file_path"]
-    export_path= config["export_path"]
-    drop_NAN_yo= config["drop_NAN"]
-    col_assign_conf = config["col_assign"]
-    date_column = config.get("date_column", None)
-    try:
-        logging.info(" Démarrage du pipeline ETL...")
-        df= load_database(file_path, encoding=conf_encoding).copy()
-        df_resultat= (df.pipe(extract_date, date_column=date_column).pipe(df_info).pipe(check_missing).pipe(convert_dtypes, dtype_map=data_types).pipe(column_rename, mapping=mapping_rename_col, keep_others=True).pipe(df_drop_NAN).pipe(aggregate, grpby_columns=grpby, agg_logic=agg_logic).pipe(col_assign, **col_assign_conf).pipe(df_info).pipe(saving_file, path=export_path, format="csv"))
-
-        logging.info("---Test terminé---")
-        return df_resultat
+    try :
+        logging.info("Démarrage du pipeline ETL")   
+        df = load_database(config["file_path"], 
+                       encoding=config.get("encoding", "utf-8")).copy()
+        return run_pipeline(df, config)
     except Exception as e:
         logging.critical(f" Erreur critique durant l'exécution : {e}")
-
 if __name__=="__main__":
     run_full_test()
