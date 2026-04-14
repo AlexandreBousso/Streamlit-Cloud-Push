@@ -15,7 +15,7 @@
     
     "drop_NAN": {"active": true, "subset": null},
 
-    "date_column": null,
+    "date_column": "col_date",
 
     "mapping_month": {
         "1": "Janvier", "2": "Février", "3": "Mars", "4": "Avril", "5": "Mai", "6": "Juin",
