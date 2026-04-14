@@ -84,108 +84,113 @@ périodes = sorted(df["Période"].unique())
 #------------------------------------------------------------------------------------------
 
 
-df_filtré_pays = df.copy()
-
-
-with st.sidebar:
-    st.subheader("Vue générale")
-    #Slicer Année
-    années = sorted(df["Année"].unique().tolist())
-    année_selectionnée = st.selectbox("Sélectionne une année", années)
-    mois_disponibles = df[df["Année"]== année_selectionnée]["Mois"].unique()
-    mois_disponibles = [m for m in mois_labels.values() if m in mois_disponibles]
-    #Slicer Mois
-    mois = list(mois_labels.values())
-    mois_sélectionné = st.selectbox("Mois", mois_disponibles)
-
-    if col_pays != "--Sélectionner":
-        st.subheader("Vue par pays")
-        pays = ["Tous les pays"] + sorted(df["COUNTRY"].unique().tolist())
-        pays_sélectionné = st.selectbox("Pays", pays)
-    else:
-        pays_sélectionné ="Tous les pays"
-    #SLICER année/pays
-    années_pays = ["Toutes les années"] + sorted(df["Année"].unique().tolist())
-    année_pays = st.selectbox("Année", années_pays)
-    #Slicer Mois/Pays
-    mois_pays = ["Tous les mois"] + list(mois_labels.values())
-    mois_pays_sélectionné = st.selectbox("Mois", mois_pays)
-
-
-
-
-
 
 #DF Filtré Pays
-if col_pays !="--Sélectionner":
-    df_filtré_pays = df[df["COUNTRY"] == pays_sélectionné]
-#DF Filtré Année
-df_filtré = df[df["Année"] == année_selectionnée]
-#DF Filtré Mois
-df_filtré_mois = df[(df["Année"] == année_selectionnée) & (df["Mois"] == mois_sélectionné)]
-
-
-if année_pays != "Toutes les années":
-    df_filtré_pays = df_filtré_pays[df_filtré_pays["Année"] == année_pays]
-
-if mois_pays_sélectionné != "Tous les mois":
-    df_filtré_pays = df_filtré_pays[df_filtré_pays["Mois"] == mois_pays_sélectionné]
-
-if pays_sélectionné != "Tous les pays":
-    df_filtré_pays = df_filtré_pays[df_filtré_pays["COUNTRY"] == pays_sélectionné]
-
-
-
-ca_mois = df_filtré_mois["Montant de la vente"].sum()
-mois_index = list(mois_labels.values()).index(mois_sélectionné)
-
-# Liste triée de toutes les périodes disponibles
-périodes = sorted(df["Période"].unique())
-# Période actuelle sélectionnée
-période_actuelle = str(année_selectionnée) + str(mois_index + 1).zfill(2)
-# Index de la période actuelle dans la liste
-idx = périodes.index(période_actuelle)
-
-
-
-
-
-ca_total = df["Montant de la vente"].sum()
-prix_moyen = df["Prix Moyen Unitaire"].mean()
-quantite_totale = df["Quantité commandée"].sum()
-quantité_mois= df_filtré_mois["Quantité commandée"].sum()
-
+#if col_pays !="--Sélectionner":
+ #   df_filtré_pays = df[df["COUNTRY"] == pays_sélectionné]
 
 # ---------------- Affichage --------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------
 
 st.title("Dashboard Ventes")
 
+#Selectbox Année et mois disponibles dans l'année sélectionnée
+années = sorted(df["Année"].unique().tolist())
+année_selectionnée = st.selectbox("Sélectionner une année", années)
+mois_disponibles = df[df["Année"]== année_selectionnée]["Mois"].unique()
+mois_disponibles = [m for m in mois_labels.values() if m in mois_disponibles]
+mois = ["Tous les mois"] + list(mois_labels.values())
+
+
+#Selectbox Mois
+mois_sélectionné = st.selectbox("Mois", mois_disponibles)
+
+#DF filtrés
+df_filtré = df[df["Année"] == année_selectionnée]
+df_filtré_mois = df[(df["Année"] == année_selectionnée) & (df["Mois"] == mois_sélectionné)]
+
+#Section Pays
+if col_pays != "--Sélectionner":
+    pays = ["Tous les pays"] + sorted(df["COUNTRY"].unique().tolist())
+    pays_sélectionné = st.selectbox("Pays", pays)
+
+
+    
+    df_filtré_pays = df.copy()
+    if pays_sélectionné != "Tous les pays":
+        df_filtré_pays = df_filtré_pays[df_filtré_pays["COUNTRY"] == pays_sélectionné]
+    #if année_selectionnée != "Toutes les années":
+        #Remettre ici df_filtré pays si jamais 
+    df_filtré_pays = df_filtré_pays[df_filtré_pays["Année"] == année_selectionnée]
+    df_filtré_pays = df_filtré_pays[df_filtré_pays["Mois"] == mois_sélectionné]
+else:
+    pays_sélectionné ="Tous les pays"
+    df_filtré_pays = df.copy()
+
+
+#Calculs des KPIs
+ca_total = df["Montant de la vente"].sum()
+prix_moyen = df["Prix Moyen Unitaire"].mean()
+quantite_totale = df["Quantité commandée"].sum()
+ca_mois = df_filtré_mois["Montant de la vente"].sum()
+mois_index = list(mois_labels.values()).index(mois_sélectionné)
+quantité_mois= df_filtré_mois["Quantité commandée"].sum()
+
+
+périodes = sorted(df["Période"].unique()) # Liste triée de toutes les périodes disponibles
+période_actuelle = str(année_selectionnée) + str(mois_index + 1).zfill(2) # Période actuelle sélectionnée
+idx = périodes.index(période_actuelle) # Index de la période actuelle dans la liste
+
+#Year to year
+année_précédente = année_selectionnée - 1
+période_y_t_y = str(année_précédente) + str(mois_index + 1).zfill(2)
+ca_yoy = None
+delta_yoy = "N/A"
+
+
+if période_y_t_y in périodes:
+    ca_yoy = df[df["Période"] == période_y_t_y]["Montant de la vente"].sum()
+    variation_yoy = (ca_mois - ca_yoy) / ca_yoy * 100
+    delta_yoy = f"{variation_yoy:,.1f}%"
+else:
+    variation_yoy = None
+    delta_yoy = "N/A"
+
+#Display du total de ventes (toutes années confondues)
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Chiffre d'affaires total", f"{ca_total:,.0f} €")
+    st.metric("Chiffre d'affaires total (toutes années confondues)", f"{ca_total:,.0f} €")
 with col2:
-    st.metric("Prix unitaire moyen", f"{prix_moyen:,.2f} €")
+    st.metric("Prix unitaire moyen des produits", f"{prix_moyen:,.2f} €")
 with col3:
-    st.metric("Quantités vendues", f"{quantite_totale:,.0f}")
+    st.metric("Quantités vendues (toutes années confondues)", f"{quantite_totale:,.0f}")
 
-if idx == 0:  # première période disponible, pas de précédent
-    st.metric("CA du mois", f"{ca_mois:,.0f} €", delta="N/A")
-    st.metric("Quantité vendue", f"{quantité_mois:,.0f}", delta="N/A")
+#Métriques du mois
+période_précédente = périodes[idx - 1] if idx > 0 else None
+
+if idx == 0:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("CA du mois", f"{ca_mois:,.0f} €", delta="N/A")
+    with col2:
+        st.metric("CA même mois an-1", f"{ca_yoy:,.0f} €" if ca_yoy else "N/A", delta=delta_yoy)
+    with col3:
+        st.metric("Quantité vendue", f"{quantité_mois:,.0f}", delta="N/A")
 else:
-    période_précédente = périodes[idx - 1]
-
     ca_précédent = df[df["Période"] == période_précédente]["Montant de la vente"].sum()
     quantité_précédent = df[df["Période"] == période_précédente]["Quantité commandée"].sum()
-
-    variation_quantité = (quantité_mois - quantité_précédent) / quantité_précédent * 100 
     variation = (ca_mois - ca_précédent) / ca_précédent * 100
+    variation_quantité = (quantité_mois - quantité_précédent) / quantité_précédent * 100
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("CA du mois", f"{ca_mois:,.0f} €", delta=f"{variation:,.1f} %")
     with col2:
+        st.metric("CA même mois an-1", f"{ca_yoy:,.0f} €" if ca_yoy else "N/A", delta=delta_yoy)
+    with col3:
         st.metric("Quantité vendue", f"{quantité_mois:,.0f}", delta=f"{variation_quantité:,.1f} %")
+
+
 
 st.subheader("Evolution du CA par mois")
 
@@ -203,29 +208,31 @@ fig_mois = px.line(
     title=f"Evolution du CA — {année_selectionnée}", markers= True
 )
 
-st.plotly_chart(fig_mois)
+with st.expander("Afficher le graphique", expanded = True):
+    st.plotly_chart(fig_mois)
 
 #Graphique de répartition par produit
 st.subheader("Répartition du CA par produit")
 
-top_x = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=10)
+with st.expander("Afficher le graphique", expanded = True):
+    top_x = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=10)
 
-ca_par_produit = df_filtré.groupby("PRODUCTCODE")["Montant de la vente"].sum().sort_values(ascending=False).reset_index()
-top_produits = ca_par_produit.head(top_x)
+    ca_par_produit = df_filtré.groupby("PRODUCTCODE")["Montant de la vente"].sum().sort_values(ascending=False).reset_index()
+    top_produits = ca_par_produit.head(top_x)
 
-fig = px.bar(
-    top_produits,
-    x="PRODUCTCODE",
-    y="Montant de la vente",
-    labels={
+    fig = px.bar(
+        top_produits,
+        x="PRODUCTCODE",
+        y="Montant de la vente",
+        labels={
         "PRODUCTCODE": "Produit",
         "Montant de la vente": "Chiffre d'affaires (€)"
     },
     title=f"Top {top_x} produits par CA"
 )
 
+    st.plotly_chart(fig)
 
-st.plotly_chart(fig)
 with st.expander("Voir tous les produits"):
     st.dataframe(ca_par_produit)
 
@@ -233,24 +240,27 @@ with st.expander("Voir tous les produits"):
 #Meilleurs produits par mois
 st.subheader("Meilleurs ventes de produits par mois")
 
-top_x2 = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=11)
+
+with st.expander("Afficher le graphique", expanded = True):
+    top_x2 = st.slider("Nombre de produits à afficher", min_value=3, max_value=20, value=11)
 
 
-best_seller_month = df_filtré_mois.groupby("PRODUCTCODE")["Quantité commandée"].sum().sort_values(ascending=False).reset_index()
-top_produits_mois = best_seller_month.head(top_x2)
+    best_seller_month = df_filtré_mois.groupby("PRODUCTCODE")["Quantité commandée"].sum().sort_values(ascending=False).reset_index()
+    top_produits_mois = best_seller_month.head(top_x2)
 
-fig_mois=px.bar(
-    top_produits_mois,
-    x="PRODUCTCODE",
-    y="Quantité commandée",
-    labels={
+    fig_mois=px.bar(
+        top_produits_mois,
+        x="PRODUCTCODE",
+     y="Quantité commandée",
+        labels={
         "PRODUCTCODE": "Produit",
         "Quantité commandée": "Quantité vendue"
     },
     title=f" Meilleurs ventes de produits par mois - {mois_sélectionné}",
 )
 
-st.plotly_chart(fig_mois)
+
+    st.plotly_chart(fig_mois)
 
 with st.expander("Voir tous les produits"):
     st.dataframe(best_seller_month)
