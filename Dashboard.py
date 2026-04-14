@@ -13,20 +13,33 @@ if fichier is not None:
     
     with st.expander("Associer vos colonnes", expanded=True):
         colonnes = df_brut.columns.tolist()
-        
+        a_une_colonne_date = st.checkbox("Mon fichier a une colonne date complète (ex: 2026-04-11)")
+
         col1, col2 = st.columns(2)
         with col1:
-            col_annee = st.selectbox("Colonne Année", ["--Sélectionner"] + colonnes)
-            col_mois = st.selectbox("Colonne Mois", ["--Sélectionner"] + colonnes)
+            col_annee = st.selectbox("Colonne Année", ["--Sélectionner"] + colonnes) if not a_une_colonne_date else None
+            col_mois = st.selectbox("Colonne Mois", ["--Sélectionner"] + colonnes) if not a_une_colonne_date else None
             col_ca = st.selectbox("Colonne Chiffre d'affaires", ["--Sélectionner"] + colonnes)
         with col2:
             col_qty = st.selectbox("Colonne Quantité", ["--Sélectionner"] + colonnes)
             col_produit = st.selectbox("Colonne Produit", ["--Sélectionner"] + colonnes)
             col_pays = st.selectbox("Colonne Pays", ["--Sélectionner"] + colonnes)
 
-    if "--Sélectionner" in [col_annee, col_mois, col_ca, col_qty, col_produit]:
-        st.warning("Merci d'associer toutes les colonnes pour continuer.")
-        st.stop()
+        if a_une_colonne_date:
+            col_date = st.selectbox("Colonne Date", ["--Sélectionner"] + colonnes)
+        else:
+            col_date = None
+
+
+    if a_une_colonne_date:
+        if "--Sélectionner" in [col_date, col_ca, col_qty, col_produit]:
+            st.warning("Merci d'associer toutes les colonnes pour continuer.")
+            st.stop()
+    else:
+        if "--Sélectionner" in [col_annee, col_mois, col_ca, col_qty, col_produit]:
+            st.warning("Merci d'associer toutes les colonnes pour continuer.")
+            st.stop()
+        
     mapping_rename = {
         col_annee: "Année",
         col_mois: "Mois",
