@@ -2,14 +2,18 @@ import streamlit as st
 import pandas as pd
 import json
 import plotly.express as px
-from Pipeline_data2 import run_pipeline
+from Pipeline_data_streamlit import run_pipeline
 
 fichier = st.file_uploader("Uploader votre fichier CSV", type=["csv"])
 
 #Set up du fichier utilisateur
 
 if fichier is not None:
-    df_brut = pd.read_csv(fichier, encoding="utf-8-sig")
+    try:
+        df_brut = pd.read_csv(fichier, encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        # Si l'UTF-8 échoue, on tente l'encodage Excel/Windows standard
+        df_brut = pd.read_csv(fichier, encoding="ISO-8859-1", sep=None, engine='python')
     
     with st.expander("Associer vos colonnes", expanded=True):
         colonnes = df_brut.columns.tolist()
@@ -39,14 +43,17 @@ if fichier is not None:
         if "--Sélectionner" in [col_annee, col_mois, col_ca, col_qty, col_produit]:
             st.warning("Merci d'associer toutes les colonnes pour continuer.")
             st.stop()
-        
+     #CONFIG POUR LE PIPELINE   
     mapping_rename = {
-        col_annee: "Année",
-        col_mois: "Mois",
         col_ca: "Montant de la vente",
         col_qty: "Quantité commandée",
         col_produit: "PRODUCTCODE",
+      
     }
+    if not a_une_colonne_date:
+        mapping_rename[col_annee] = "Année",
+        mapping_rename[col_mois]='Mois',  
+        
     if col_pays != "--Sélectionner":
         mapping_rename[col_pays] = "COUNTRY"
     
@@ -69,7 +76,7 @@ if fichier is not None:
         "agg_logic": agg_logic,
         "col_assign": col_assign_conf,
         "data_types": {},
-        "date_column": None,
+        "date_column": col_date if a_une_colonne_date else None,
         "export_path": "export"
     }
     df= run_pipeline(df_brut, config)
