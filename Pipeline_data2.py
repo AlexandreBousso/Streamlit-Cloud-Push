@@ -126,12 +126,6 @@ def df_info(df):
     print(df.info())
     return(df)
 
-def extract_date(df, date_column=None):
-    if date_column is not None:
-        df["Année"] = pd.to_datetime(df[date_column]).dt.year
-        df["Mois"] = pd.to_datetime(df[date_column]).dt.month
-        logging.info(f"Colonnes Année et Mois extraites depuis {date_column}")
-    return df
 
 def check_missing(df):
     print("Analyse des valeurs manquantes :")
@@ -251,23 +245,39 @@ def saving_file(df, path, format): #Fonction qui permet de save un data frame au
         logging.info("Format de fichier incompatible, veuillez choisir entre 'csv' ou 'excel'")
     return df
 
-def prepare_dates(df, date_column=None):
+
+
+#Extrait Année, Mois, Jour et heure de la colonne date choisie par l'utilisateur sur un format YYYY/MM/DD où DD/MM/YYYY etc...
+def extract_date(df, date_column=None):
     if date_column is not None:
-        df["Date"] = pd.to_datetime(df[date_column])
-        df["Année"] = df["Date"].dt.year
-        df["Mois"] = df["Date"].dt.month
-        df["Jour"] = df["Date"].dt.day
-    logging.info(f"Colonnes disponibles dans prepare_dates : {df.columns.tolist()}")
-    logging.info(f"Type de Mois : {df['Mois'].dtype}")
+        temp_date = pd.to_datetime(df[date_column], errors="coerce")
+        df["Année"] = temp_date.dt.year
+        df["Mois"] = temp_date.dt.month
+        df["Jour"] = temp_date.dt.day
+        df["Heure"] = temp_date.dt.hour
+        print("Colonnes après extraction :", df.columns.tolist())
+        if df["Heure"].nunique()==1 and df["Heure"].iloc[0]==0:
+            logging.info(f"Pas de mention d'heure dans {date_column}")
+    return df
+
+
+#Permet de mettre au même format les mois et période qu'importe le csv
+def prepare_dates(df):
+    if "Mois" in df.columns:
+        df["Mois_num"] = df["Mois"].astype(int)
+    else :
+        raise KeyError("La colonne 'Mois' est introuvable.")
     mois_labels = {
         1: "Janvier", 2: "Février", 3: "Mars",
         4: "Avril", 5: "Mai", 6: "Juin",
-        7: "Juillet", 8: "Août", 9: "Septembre",
+         7: "Juillet", 8: "Août", 9: "Septembre",
         10: "Octobre", 11: "Novembre", 12: "Décembre"
     }
-    df["Mois_num"] = df["Mois"].astype(int)
-    df["Mois"] = df["Mois"].map(mois_labels)
-    df["Période"] = df["Année"].astype(str) + df["Mois_num"].astype(str).str.zfill(2)
+
+    df["Mois"] = df["Mois_num"].map(mois_labels)
+
+    if "Année" in df.columns:
+        df["Période"] = df["Année"].astype(str) + df["Mois_num"].astype(str).str.zfill(2)
     logging.info("Colonnes Mois_num et Période créées.")
     return df
 # ==========================================
@@ -296,17 +306,17 @@ def run_pipeline(df, config):
     df_resultat= (df.pipe(extract_date, date_column=date_column)
     .pipe(df_info).pipe(check_missing)
     .pipe(convert_dtypes, dtype_map=data_types)
+    .pipe(prepare_dates)
     .pipe(column_rename, mapping=mapping_rename_col, keep_others=True)
-    .pipe(prepare_dates, date_column=date_column)
     .pipe(df_drop_NAN)
     .pipe(aggregate, grpby_columns=grpby, agg_logic=agg_logic)
     .pipe(col_assign, **col_assign_conf)
-    .pipe(df_info)
-) 
+    .pipe(df_info))
+
     return df_resultat
 
 def run_full_test():
-    config = load_config("config.json")
+    #config = load_config("config.json")
     if not config:
         logging.info("Aucune configuration trouvée, arrêt du pipeline.")
         return
