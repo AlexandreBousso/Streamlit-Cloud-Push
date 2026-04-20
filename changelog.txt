@@ -1,0 +1,2 @@
+20/04/20026 : Fixed an issue regarding the support of both date format at the same time. 
+  Added an optional line in Dashboard ventes section (Chiffres d'affaires en année sélectionnée, Variation du chiffres d'affaires annuel , Quantité vendue en année sélectionnée)
