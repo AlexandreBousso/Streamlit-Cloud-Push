@@ -51,8 +51,8 @@ if fichier is not None:
       
     }
     if not a_une_colonne_date:
-        mapping_rename[col_annee] = "Année",
-        mapping_rename[col_mois]='Mois',  
+        mapping_rename[col_annee] = "Année"
+        mapping_rename[col_mois]='Mois'  
         
     if col_pays != "--Sélectionner":
         mapping_rename[col_pays] = "COUNTRY"
@@ -69,6 +69,8 @@ if fichier is not None:
     "new_col_name": "Prix Moyen Unitaire",
     "arg1": "Montant de la vente",
     "arg2": "Quantité commandée"}
+    
+  
 
     config = {
         "mapping_rename": mapping_rename,
@@ -150,6 +152,8 @@ else:
 
 #Calculs des KPIs
 ca_total = df["Montant de la vente"].sum()
+ca_année =df_filtré["Montant de la vente"].sum()
+quantité_année =df_filtré["Quantité commandée"].sum()
 prix_moyen = df["Prix Moyen Unitaire"].mean()
 quantite_totale = df["Quantité commandée"].sum()
 ca_mois = df_filtré_mois["Montant de la vente"].sum()
@@ -163,6 +167,8 @@ idx = périodes.index(période_actuelle) # Index de la période actuelle dans la
 
 #Year to year
 année_précédente = année_selectionnée - 1
+ca_année_précédente =  df[df["Année"] == année_précédente]["Montant de la vente"].sum()
+variation_ca_annuel = (ca_année - ca_année_précédente) / ca_année_précédente * 100
 période_y_t_y = str(année_précédente) + str(mois_index + 1).zfill(2)
 ca_yoy = None
 delta_yoy = "N/A"
@@ -184,6 +190,16 @@ with col2:
     st.metric("Prix unitaire moyen des produits", f"{prix_moyen:,.2f} €")
 with col3:
     st.metric("Quantités vendues (toutes années confondues)", f"{quantite_totale:,.0f}")
+
+#Métrique année
+if année_précédente in df["Année"].values:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(f"Chiffre d'affaires en {année_selectionnée}", f"{ca_année:,.0f} €")
+    with col2:
+        st.metric(f"Variation du chiffre d'affaire annuel", f"{variation_ca_annuel:,.1f}%" if variation_ca_annuel is not None else "N/A")
+    with col3:
+        st.metric(f"Quantité vendue en {année_selectionnée}", f"{quantité_année:,.0f}")
 
 #Métriques du mois
 période_précédente = périodes[idx - 1] if idx > 0 else None
