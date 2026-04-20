@@ -303,11 +303,12 @@ def run_pipeline(df, config):
     date_column = config.get("date_column", None)
 
 
-    df_resultat= (df.pipe(extract_date, date_column=date_column)
-    .pipe(df_info).pipe(check_missing)
-    .pipe(convert_dtypes, dtype_map=data_types)
+    df_resultat= (df.pipe(column_rename, mapping=mapping_rename_col, keep_others=True)
+    .pipe(extract_date, date_column=date_column)
     .pipe(prepare_dates)
-    .pipe(column_rename, mapping=mapping_rename_col, keep_others=True)
+    .pipe(df_info)
+    .pipe(check_missing)
+    .pipe(convert_dtypes, dtype_map=data_types)
     .pipe(df_drop_NAN)
     .pipe(aggregate, grpby_columns=grpby, agg_logic=agg_logic)
     .pipe(col_assign, **col_assign_conf)
@@ -329,3 +330,4 @@ def run_full_test():
         logging.critical(f" Erreur critique durant l'exécution : {e}")
 if __name__=="__main__":
     run_full_test()
+
