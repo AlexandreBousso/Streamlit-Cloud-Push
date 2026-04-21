@@ -15,7 +15,9 @@ if fichier is not None:
         # Si l'UTF-8 échoue, on tente l'encodage Excel/Windows standard
         df_brut = pd.read_csv(fichier, encoding="ISO-8859-1", sep=None, engine='python')
     
-    with st.expander("Associer vos colonnes", expanded=True):
+    with st.expander("Veuillez associer les colonnes de votre fichier.", expanded=True):
+        st.info("Les noms de colonnes par défaut sont : Année, Mois, Chiffre d'affaires, Quantité, Produit etc... Lorsque vous cliquez sur le menu déroulant, les noms qui s'affichent sont ceux de votre fichier. Vous devez juste faire correspondre les bonnes colonnes entre elles.")
+        st.info("En fonction de votre fichier, vous pouvez soit associer une colonne date complète (ex: 2026-04-11), auquel cas, merci de cocher la case correspondante, soit associer une colonne année et une colonne mois séparément.")
         colonnes = df_brut.columns.tolist()
         a_une_colonne_date = st.checkbox("Mon fichier a une colonne date complète (ex: 2026-04-11)")
 
