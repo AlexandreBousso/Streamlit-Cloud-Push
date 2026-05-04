@@ -1,3 +1,10 @@
 20/04/2026 : Fixed an issue regarding the support of both date format at the same time. 
   Added an optional line in Dashboard ventes section (Chiffres d'affaires en année sélectionnée, Variation du chiffres d'affaires annuel , Quantité vendue en année sélectionnée)
+
 21/04/2026 : Added guidlines for columns association
+
+04/05/2026 : Clarified some dashboard data & chart names :
+   -Evolution du CA par mois > Evolution du CA par mois au cours de l'"année selectionnée".
+   -Répartition du CA par produits > Répartition du CA par produits (Statistiques annuelles)
+Added a Year sales percentage/total sales data.
+Added a new chart "Répartition du CA par plage horaires". For now it only supports date format YYYY/MM/DD:HH/MM
