@@ -255,12 +255,27 @@ def extract_date(df, date_column=None):
         df["Mois"] = temp_date.dt.month
         df["Jour"] = temp_date.dt.day
         df["Heure"] = temp_date.dt.hour
-        print("Colonnes après extraction :", df.columns.tolist())
-        if df["Heure"].nunique()==1 and df["Heure"].iloc[0]==0:
-            logging.info(f"Pas de mention d'heure dans {date_column}")
+        
+        # Amélioration : On ne garde l'heure que si elle contient une info réelle
+        # (Si toutes les heures sont à 0, c'est probablement que le fichier n'a pas d'heure)
+        if not (df["Heure"] == 0).all():
+            df["Plage_Horaire"] = df["Heure"].apply(
+                lambda x: f"{x:02d}h - {(x + 1) % 24:02d}h"
+            )
+            logging.info(f"Heures extraites avec succès depuis {date_column}")
+        else:
+            # On peut quand même créer la colonne avec 0 ou l'ignorer
+            df["Plage_Horaire"] = 0 
+            logging.warning(f"Pas de mention d'heure (ou toutes à minuit) dans {date_column}")
+        
+        # Nettoyage des lignes où la date n'a pas pu être convertie (NaT)
+        df = df.dropna(subset=["Année", "Mois", "Jour"])
+        
+        # Typage pour éviter les .0 (ex: 2023.0)
+        for col in ["Année", "Mois", "Jour", "Heure"]:
+            if col in df.columns:
+                df[col] = df[col].astype(int)
     return df
-
-
 #Permet de mettre au même format les mois et période qu'importe le csv
 def prepare_dates(df):
     if "Mois" in df.columns:
